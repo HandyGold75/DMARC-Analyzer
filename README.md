@@ -12,18 +12,19 @@ _Note: I'm not an developer by profession and the code is far from best practice
 ## Requirements
 
 * Python 3.10 or greater (Older version not tested).
-* Python Modules PySimpleGUI and xmltodict
+* Python Modules pywin32, xmltodict and PySimpleGUI.
 * Windows 10/ 11.
 * Outlook Client
+* (Shared) mailbox that receives dmarc reports.
 * Microsoft Notepad (Not required to run).
 
 ## Set up
 
 Install required modules
 
-`py -m pip install PySimpleGUI xmltodict`
+`py -m pip install pywin32 xmltodict PySimpleGUI`
 
-Setting you domains
+Setting you domains and mailbox
 
 * Open the script in a editor.
 * At the bottom of the script replace the domains the scripts need to check.
