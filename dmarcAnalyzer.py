@@ -291,7 +291,17 @@ class gui:
                 reportsList.append([sg.Text("Start: " + report["start"], pad=(0, 0)), sg.Push(), sg.Text("End: " + report["end"], pad=(0, 0))])
                 reportsList.append([sg.Text(report["file"], key="OpenDir_" + domain + "\\Done\\" + report["file"], enable_events=True, tooltip="Open this report in notepad.")])
                 reportsList.append([sg.Image(size=(0, 5))])
-            reports = [sg.Frame("Reports", reportsList, key="ShowHide_Item_" + domain, visible=False, title_location="n", vertical_alignment="top", expand_x=True, expand_y=True, pad=(1, 1)), sg.Image(size=(0, 0), pad=(0, 0))]
+            reports = [
+                sg.Frame("Reports", [[sg.Column(reportsList, scrollable=True, vertical_scroll_only=True, expand_x=True, size=(None, 200), pad=(0, 0))]],
+                         key="ShowHide_Item_" + domain,
+                         visible=False,
+                         title_location="n",
+                         vertical_alignment="top",
+                         expand_x=True,
+                         expand_y=True,
+                         pad=(1, 1)),
+                sg.Image(size=(0, 0), pad=(0, 0))
+            ]
 
             reportFrameList.append(sg.Frame(domain, [
                 summary,
