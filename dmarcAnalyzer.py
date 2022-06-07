@@ -143,15 +143,15 @@ class reportHandel:
                     currentRecord["dkim_check"] = record["auth_results"]["dkim"]["result"]
                 currentRecords.append(currentRecord)
 
-            #yapf: Disable
             finalReports[metaData["filename"]] = {
                 "id": metaData["report_id"],
                 "domain": policy["domain"],
                 "receiver": metaData["org_name"],
                 "date_range": metaData["date_range"]["begin"] + "/" + metaData["date_range"]["end"],
+                "date_start": datetime.fromtimestamp(int(metaData["date_range"]["begin"])).strftime("%d/%m/%y %H:%M"),
+                "date_end": datetime.fromtimestamp(int(metaData["date_range"]["end"])).strftime("%d/%m/%y %H:%M"),
                 "records": currentRecords
-                }
-            #yapf: Enable
+            }
 
         return finalReports
 
@@ -233,8 +233,11 @@ class gui:
                         summaryData[domain]["dkim_failed"] += recordData["amount"]
                     else:
                         summaryData[domain]["success"] += recordData["amount"]
-                startTime, endTime = allReports[report]["date_range"].split("/")
-                summaryData[domain]["reports"].append({"file": report, "start": datetime.fromtimestamp(int(startTime)).strftime("%d/%m/%y %H:%M"), "end": datetime.fromtimestamp(int(endTime)).strftime("%d/%m/%y %H:%M")})
+                summaryData[domain]["reports"].append({"file": report, "start": allReports[report]["date_start"], "end": allReports[report]["date_end"]})
+
+            for i in summaryData:
+                summaryData[i]["reports"].sort(key=lambda r: r["file"].split("!")[2], reverse=True)
+
             return summaryData
 
         def columnize(list: list):
@@ -285,12 +288,11 @@ class gui:
                 sg.Button("Json report", key="OpenFile_" + domain + "\\" + domain + "-report.json", tooltip="Open the Json report in notepad.", pad=(5, 10)),
                 sg.Button("Open dir", key="OpenDir_" + domain, tooltip="Open the domain's directory.", pad=(5, 10))
             ]
-
             reportsList = []
             for report in summaryData_Json[domain]["reports"]:
                 reportsList.append([sg.Text("Start: " + report["start"], pad=(0, 0)), sg.Push(), sg.Text("End: " + report["end"], pad=(0, 0))])
                 reportsList.append([sg.Text(report["file"], key="OpenDir_" + domain + "\\Done\\" + report["file"], enable_events=True, tooltip="Open this report in notepad.")])
-                reportsList.append([sg.Image(size=(0, 5))])
+                reportsList.append([sg.Image(size=(0, 5), pad=(0, 0))])
             reports = [
                 sg.Frame("Reports", [[sg.Column(reportsList, scrollable=True, vertical_scroll_only=True, expand_x=True, size=(None, 200), pad=(0, 0))]],
                          key="ShowHide_Item_" + domain,
@@ -361,6 +363,8 @@ class gui:
         return layout
 
     def main():
+        """Main loop, responisble for setting up, updating and keeping track (parts) of the GUI.
+        """
         window = sg.Window("DMARC Analazer", gui.layout(), finalize=True)
 
         showHideStates = {"Help": False}
@@ -393,10 +397,10 @@ class gui:
 
 
 if __name__ == "__main__":
-
     workFolder = path.split(__file__)[0] + "\\DMARC"
     domains = ["mydomain.com", "mydomain.co.uk", "anotherdomain.eu"]
-
+    print("Loading data. . .", end="\r")
     outlook.saveAttachments(outlook.getFolderMessages("DMARC\\Inbox"))
     allReports = reportHandel.logData(reportHandel.formatReports(reportHandel.readXmlFiles()))
+    print("                 ")
     gui.main()
