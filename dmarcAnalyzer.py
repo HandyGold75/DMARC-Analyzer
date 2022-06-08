@@ -109,8 +109,6 @@ class reportHandel:
 
         Args:
             reports (dict): Dict of reports to log.
-            workFolder (str, Global): Path to the main work folder. 
-            domains (list, Global): List of domains being used.
 
         Returns:
             Dict: Dict of formated reports.
@@ -189,6 +187,45 @@ class reportHandel:
                 mainLog[report] = reportData
         return mainLog
 
+    def getSummary():
+        """Makes an summary out of all the reports.
+
+        Args:
+            allReports (list, Global): List of Xml files that need to be read.
+
+        Returns:
+            Dict: Dict of reports including already logged items (Summary version).
+            List: List of domains that where found in the reports.
+        """
+        summaryData = {}
+        for report in allReports:
+            domain = allReports[report]["domain"]
+            if not domain in summaryData:
+                summaryData[domain] = {"count": 0, "success": 0, "spf_failed": 0, "dkim_failed": 0, "reports": [], "success_files": [], "spf_files": [], "dkim_files": []}
+            for recordData in allReports[report]["records"]:
+                summaryData[domain]["count"] += recordData["amount"]
+                if recordData["spf_check"] != "pass":
+                    summaryData[domain]["spf_failed"] += recordData["amount"]
+                    if not report in summaryData[domain]["spf_files"]:
+                        summaryData[domain]["spf_files"].append(report)
+                elif recordData["dkim_check"] != "pass":
+                    summaryData[domain]["dkim_failed"] += recordData["amount"]
+                    if not report in summaryData[domain]["dkim_files"]:
+                        summaryData[domain]["dkim_files"].append(report)
+                else:
+                    summaryData[domain]["success"] += recordData["amount"]
+                    summaryData[domain]["success_files"].append(report)
+            summaryData[domain]["reports"].append({"file": report, "start": allReports[report]["date_start"], "end": allReports[report]["date_end"]})
+
+        for i in summaryData:
+            summaryData[i]["reports"].sort(key=lambda r: r["file"].split("!")[2], reverse=True)
+
+        activeDomains = []
+        for activeDomain in summaryData:
+            activeDomains.append(activeDomain)
+
+        return summaryData, activeDomains
+
 
 class gui:
     class func:
@@ -211,35 +248,6 @@ class gui:
             system("py \"" + __file__ + "\"")
             exit()
 
-        def getSummaryData():
-            """Makes an summary out of all the reports.
-
-            Args:
-                allReports (list, Global): List of Xml files that need to be read.
-
-            Returns:
-                Dict: Dict of reports including already logged items (Summary version).
-            """
-            summaryData = {}
-            for report in allReports:
-                domain = allReports[report]["domain"]
-                if not domain in summaryData:
-                    summaryData[domain] = {"count": 0, "success": 0, "spf_failed": 0, "dkim_failed": 0, "reports": []}
-                for recordData in allReports[report]["records"]:
-                    summaryData[domain]["count"] += recordData["amount"]
-                    if recordData["spf_check"] != "pass":
-                        summaryData[domain]["spf_failed"] += recordData["amount"]
-                    elif recordData["dkim_check"] != "pass":
-                        summaryData[domain]["dkim_failed"] += recordData["amount"]
-                    else:
-                        summaryData[domain]["success"] += recordData["amount"]
-                summaryData[domain]["reports"].append({"file": report, "start": allReports[report]["date_start"], "end": allReports[report]["date_end"]})
-
-            for i in summaryData:
-                summaryData[i]["reports"].sort(key=lambda r: r["file"].split("!")[2], reverse=True)
-
-            return summaryData
-
         def columnize(list: list):
             """Puts GUI items in GUI columns.
 
@@ -260,95 +268,108 @@ class gui:
                 returnList.append(sg.Column(tempList))
             return returnList
 
-    def getGuiReports():
-        """Makes an summary out of all the reports.
+    class getGui:
+        def header():
+            return [sg.Text("--- Report ---", justification="center", expand_x=True)]
 
-        Args:
-            domains (list, Global): Domains to check for in the subject and sort into subfolders.
+        def reports():
+            """Makes an summary out of all the reports.
 
-        Returns:
-            List: List of report frames for the GUI layout.
-        """
-        summaryData_Json = gui.func.getSummaryData()
+            Args:
+                summaryData (Dict, Global): Dict of reports including already logged items (Summary version).
+                
+            Returns:
+                List: List of report frames for the GUI layout.
+            """
 
-        reportFrameList = []
-        for domain in summaryData_Json:
-            summary = [
-                sg.Text("Count: " + str(summaryData_Json[domain]["count"]), pad=(5, 10)),
-                sg.Push(),
-                sg.Text("Success: " + str(summaryData_Json[domain]["success"]), pad=(5, 10)),
-                sg.Push(),
-                sg.Text("SPF Failed: " + str(summaryData_Json[domain]["spf_failed"]), pad=(5, 10)),
-                sg.Push(),
-                sg.Text("DKIM Failed: " + str(summaryData_Json[domain]["dkim_failed"]), pad=(5, 10))
+            reportFrameList = []
+            for domain in summaryData:
+                success_keys = []
+                for file in summaryData[domain]["success_files"]:
+                    success_keys.append(file + "::OpenDir_" + domain + "\\Done\\" + file)
+                spf_keys = []
+                for file in summaryData[domain]["spf_files"]:
+                    spf_keys.append(file + "::OpenDir_" + domain + "\\Done\\" + file)
+                dkim_keys = []
+                for file in summaryData[domain]["dkim_files"]:
+                    dkim_keys.append(file + "::OpenDir_" + domain + "\\Done\\" + file)
+                summary = [
+                    sg.Text("Count: " + str(summaryData[domain]["count"]), pad=(5, 10)),
+                    sg.Push(),
+                    sg.Text("Success: " + str(summaryData[domain]["success"]), right_click_menu=["", success_keys], pad=(5, 10)),
+                    sg.Push(),
+                    sg.Text("SPF Failed: " + str(summaryData[domain]["spf_failed"]), right_click_menu=["", spf_keys], pad=(5, 10)),
+                    sg.Push(),
+                    sg.Text("DKIM Failed: " + str(summaryData[domain]["dkim_failed"]), right_click_menu=["", dkim_keys], pad=(5, 10))
+                ]
+
+                buttons = [
+                    sg.Button("Show reports", key="ShowHide_" + domain + "_reports", tooltip="Show/ hide the reports list.", pad=(5, 10)),
+                    sg.Button("Json report", key="OpenFile_" + domain + "\\" + domain + "-report.json", tooltip="Open the Json report in notepad.", pad=(5, 10)),
+                    sg.Button("Open dir", key="OpenDir_" + domain, tooltip="Open the domain's directory.", pad=(5, 10))
+                ]
+
+                reportsList = []
+                for report in summaryData[domain]["reports"]:
+                    reportsList.append([sg.Text("Start: " + report["start"], pad=(0, 0)), sg.Push(), sg.Text("End: " + report["end"], pad=(0, 0))])
+                    reportsList.append([sg.Text(report["file"], key="OpenDir_" + domain + "\\Done\\" + report["file"], enable_events=True, tooltip="Open this report in notepad.")])
+                    reportsList.append([sg.Image(size=(0, 5), pad=(0, 0))])
+                reports = [
+                    sg.Frame("Reports", [[sg.Column(reportsList, scrollable=True, vertical_scroll_only=True, expand_x=True, size=(None, 200), pad=(0, 0))]],
+                             key="ShowHide_Item_" + domain,
+                             visible=False,
+                             title_location="n",
+                             vertical_alignment="top",
+                             expand_x=True,
+                             expand_y=True,
+                             pad=(1, 1)),
+                    sg.Image(size=(0, 0), pad=(0, 0))
+                ]
+
+                reportFrameList.append(sg.Frame(domain, [
+                    summary,
+                    buttons,
+                    reports,
+                ], expand_x=True, expand_y=True, pad=(0, 10)))
+
+            return gui.func.columnize(reportFrameList)
+
+        def footer():
+            """Get footer for the GUI.
+
+            Returns:
+                List: List of footer items for the GUI.
+            """
+            return [
+                sg.Button("Show help", key="ShowHide_Help_help", pad=(10, 10), tooltip="Show/ hide the help menu."),
+                sg.Button("Open dir", key="OpenDir_", pad=(10, 10), tooltip="Open the main work directory."),
+                sg.Button("Show all", key="ShowHide_All_all", pad=(10, 10), tooltip="Show/ hide all reports."),
+                sg.Button("Reload", key="Action_Reload", pad=(10, 10), tooltip="Reloads the data fresh from Outlook.")
             ]
 
-            buttons = [
-                sg.Button("Show reports", key="ShowHide_" + domain + "_reports", tooltip="Show/ hide the reports list.", pad=(5, 10)),
-                sg.Button("Json report", key="OpenFile_" + domain + "\\" + domain + "-report.json", tooltip="Open the Json report in notepad.", pad=(5, 10)),
-                sg.Button("Open dir", key="OpenDir_" + domain, tooltip="Open the domain's directory.", pad=(5, 10))
-            ]
-            reportsList = []
-            for report in summaryData_Json[domain]["reports"]:
-                reportsList.append([sg.Text("Start: " + report["start"], pad=(0, 0)), sg.Push(), sg.Text("End: " + report["end"], pad=(0, 0))])
-                reportsList.append([sg.Text(report["file"], key="OpenDir_" + domain + "\\Done\\" + report["file"], enable_events=True, tooltip="Open this report in notepad.")])
-                reportsList.append([sg.Image(size=(0, 5), pad=(0, 0))])
-            reports = [
-                sg.Frame("Reports", [[sg.Column(reportsList, scrollable=True, vertical_scroll_only=True, expand_x=True, size=(None, 200), pad=(0, 0))]],
-                         key="ShowHide_Item_" + domain,
-                         visible=False,
-                         title_location="n",
-                         vertical_alignment="top",
-                         expand_x=True,
-                         expand_y=True,
-                         pad=(1, 1)),
-                sg.Image(size=(0, 0), pad=(0, 0))
-            ]
+        def helpmenu():
+            """Get helpmenu in text format for the GUI.
 
-            reportFrameList.append(sg.Frame(domain, [
-                summary,
-                buttons,
-                reports,
-            ], expand_x=True, expand_y=True, pad=(0, 10)))
+            Args:
+                domains (list, Global): Domains to check for in the subject and sort into subfolders.
 
-        return gui.func.columnize(reportFrameList)
-
-    def getGuiFooter():
-        """Get footer for the GUI.
-
-        Returns:
-            List: List of footer items for the GUI.
-        """
-        buttons = [
-            sg.Button("Show help", key="ShowHide_Help_help", pad=(10, 10), tooltip="Show/ hide the help menu."),
-            sg.Button("Open dir", key="OpenDir_", pad=(10, 10), tooltip="Open the main work directory."),
-            sg.Button("Reload", key="Action_Reload", pad=(10, 10), tooltip="Reloads the data fresh from Outlook.")
-        ]
-        return buttons
-
-    def getGuiHelpmenu():
-        """Get helpmenu in text format for the GUI.
-
-        Args:
-            domains (list, Global): Domains to check for in the subject and sort into subfolders.
-
-        Returns:
-            List: List with the helmenu for the GUI.
-        """
-        #yapf: Disable
-        helpMenu = ("Before the GUI is launched dmarc reports will be pulled from the Outlook client and processed into an report per domain.\n" +
-                    "An summary of every domain's report is visable in this GUI.\n\n" +
-                    "The files used by this program are orginized as followed:\n\n"  +
-                    "DMARC                                       -->     Main work directory.\n" +
-                    "└───<Domain>                           -->     Folder per domain.\n" +
-                    "    ├───Comp                             -->     Folder for pulled compiled files.\n" +
-                    "    ├───Done                              -->     Folder for uncompiled files after being processed.\n" +
-                    "    ├───Xml                                -->     Folder for uncompiled files.\n" +
-                    "    └───<Domain>-report.json     -->     Json report of all processed files.\n\n" +
-                    "Supported domains: \n\n" + str(domains).replace("[", "").replace("]", "").replace("'", "").replace(", ", "\n")
-                    )
-        #yapf: Enable
-        return [sg.Text(helpMenu, visible=False, key="ShowHide_Item_Help"), sg.Image(size=(0, 0), pad=(0, 0))]
+            Returns:
+                List: List with the helmenu for the GUI.
+            """
+            #yapf: Disable
+            helpMenu = ("Before the GUI is launched dmarc reports will be pulled from the Outlook client and processed into an report per domain.\n" +
+                        "An summary of every domain's report is visable in this GUI.\n\n" +
+                        "The files used by this program are orginized as followed:\n\n"  +
+                        "DMARC                                       -->     Main work directory.\n" +
+                        "└───<Domain>                           -->     Folder per domain.\n" +
+                        "    ├───Comp                             -->     Folder for pulled compiled files.\n" +
+                        "    ├───Done                              -->     Folder for uncompiled files after being processed.\n" +
+                        "    ├───Xml                                -->     Folder for uncompiled files.\n" +
+                        "    └───<Domain>-report.json     -->     Json report of all processed files.\n\n" +
+                        "Supported domains: \n\n" + str(domains).replace("[", "").replace("]", "").replace("'", "").replace(", ", "\n")
+                        )
+            #yapf: Enable
+            return [sg.Text(helpMenu, visible=False, key="ShowHide_Item_Help"), sg.Image(size=(0, 0), pad=(0, 0))]
 
     def layout():
         """Set up layout of GUI.
@@ -358,31 +379,46 @@ class gui:
         """
         sg.theme("DarkGrey13")
 
-        layout = [[sg.Text("--- Report ---", justification="center", expand_x=True)], gui.getGuiReports(), gui.getGuiFooter(), gui.getGuiHelpmenu()]
+        layout = [gui.getGui.header(), gui.getGui.reports(), gui.getGui.footer(), gui.getGui.helpmenu()]
 
         return layout
 
     def main():
         """Main loop, responisble for setting up, updating and keeping track (parts) of the GUI.
+
+            Args:
+                activeDomains (list, Global): All active domains that hve reports.
         """
         window = sg.Window("DMARC Analazer", gui.layout(), finalize=True)
 
-        showHideStates = {"Help": False}
-        for domain in domains:
+        showHideStates = {"Help": False, "All": False}
+        for domain in activeDomains:
             showHideStates[domain] = False
 
         while True:
             event = window.read()[0]
             if event == sg.WIN_CLOSED:
                 break
-            elif event.startswith("ShowHide_"):
+            if "::" in event:
+                event = event.split("::")[1]
+
+            if event.startswith("ShowHide_"):
                 button, text = event.split("_")[1:]
                 showHideStates[button] = not showHideStates[button]
-                window["ShowHide_Item_" + button].update(visible=showHideStates[button])
                 if showHideStates[button]:
                     window["ShowHide_" + button + "_" + text].update(text="Hide " + text)
                 else:
                     window["ShowHide_" + button + "_" + text].update(text="Show " + text)
+                if button != "All":
+                    window["ShowHide_Item_" + button].update(visible=showHideStates[button])
+                else:
+                    for domain in activeDomains:
+                        showHideStates[domain] = showHideStates["All"]
+                        if showHideStates[domain]:
+                            window["ShowHide_" + domain + "_reports"].update(text="Hide reports")
+                        else:
+                            window["ShowHide_" + domain + "_reports"].update(text="Show reports")
+                        window["ShowHide_Item_" + domain].update(visible=showHideStates[domain])
             elif event.startswith("OpenFile_"):
                 gui.func.openDir(file=event.split("_")[1])
             elif event.startswith("OpenDir_"):
@@ -397,10 +433,11 @@ class gui:
 
 
 if __name__ == "__main__":
+    print("Loading data. . .", end="\r")
     workFolder = path.split(__file__)[0] + "\\DMARC"
     domains = ["mydomain.com", "mydomain.co.uk", "anotherdomain.eu"]
-    print("Loading data. . .", end="\r")
     outlook.saveAttachments(outlook.getFolderMessages("DMARC\\Inbox"))
     allReports = reportHandel.logData(reportHandel.formatReports(reportHandel.readXmlFiles()))
+    summaryData, activeDomains = reportHandel.getSummary()
     print("                 ")
     gui.main()
