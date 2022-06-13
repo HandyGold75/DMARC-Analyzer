@@ -1,8 +1,8 @@
-from os import listdir, mkdir, path, system
-from shutil import rmtree, unpack_archive, move
+from os import listdir, mkdir, path, rename, system
+from shutil import rmtree, unpack_archive, move, ReadError
 from win32com.client import Dispatch, CDispatch
 from xmltodict import parse as xmlParse
-from gzip import open as gopen
+from gzip import BadGzipFile, open as gopen
 from json import dumps, load
 from datetime import datetime
 import PySimpleGUI as sg
@@ -33,24 +33,7 @@ class outlook:
                 jsonFile.write("{}")
                 jsonFile.close()
 
-    def getFolderMessages(target: str):
-        """Get messages in the inbox of the target
-
-        Args:
-            target (str): Name of the target mailbox and folder (NOT MAILADRESS, for eq. DMARC\\Inbox).
-
-        Returns:
-            win32com.client.CDispatch: Object of inbox items
-        """
-        outlook = Dispatch("Outlook.Application").GetNamespace("MAPI")
-
-        folder = outlook
-        for i in target.split("\\"):
-            folder = folder.Folders(i)
-
-        return folder.Items
-
-    def saveAttachments(messages: CDispatch):
+    def saveAttachments(mailbox: CDispatch):
         """Save all attachements of x messages
 
         Args:
@@ -58,22 +41,55 @@ class outlook:
             workFolder (str, Global): Main outputfolder.
             domains (list, Global): Domains to check for in the subject and sort into subfolders.
         """
+
         outlook.perpFolderStructure()
-        for message in messages:
+
+        outlookClient = Dispatch("Outlook.Application").GetNamespace("MAPI")
+
+        folder = outlookClient
+        for i in mailbox.split("\\"):
+            folder = folder.Folders(i)
+
+        i = 0
+        for message in folder.Items:
             subject = message.Subject
             attachments = message.Attachments
             for attachment in attachments:
+                xmlFileName = str(attachment).replace(".xml", "").replace(".zip", ".xml").replace(".gztar", ".xml").replace(".bztar", ".xml").replace(".tar", ".xml").replace(".gz", ".xml")
+                i += 1
                 for domain in domains:
-                    if "report domain: " + domain in subject.lower() and not path.exists(workFolder + "\\" + domain + "\\Done\\" + str(attachment).replace(".zip", ".xml").replace(".xml.gz", ".xml")):
-                        attachment.SaveAsFile(workFolder + "\\" + domain + "\\Comp\\" + str(attachment))
-                        if str(attachment).endswith(".gz"):
-                            fileIn = gopen(workFolder + "\\" + domain + "\\Comp\\" + str(attachment), "rt")
-                            fileOut = open(workFolder + "\\" + domain + "\\Xml\\" + str(attachment).replace(".gz", ""), "w")
+                    compFolder = workFolder + "\\" + domain + "\\Comp"
+                    xmlFolder = workFolder + "\\" + domain + "\\Xml"
+                    if "report domain: " + domain in subject.lower() and not path.exists(workFolder + "\\" + domain + "\\Done\\" + xmlFileName.replace(".xml", "") + "!" + str(i) + ".xml"):
+                        attachment.SaveAsFile(compFolder + "\\" + str(attachment))
+                        attachment = str(attachment)
+                        if attachment.endswith(".rar") or attachment.endswith(".7z"):
+                            print("                 \nWARNING! Rar or 7z file found, unpacking rar archives not yet supported!\n")
+                        elif attachment.endswith(".zip") or attachment.endswith(".tar"):
+                            unpack_archive(compFolder + "\\" + attachment, workFolder + "\\" + domain + "\\Xml\\")
+                            rename(xmlFolder + "\\" + xmlFileName, xmlFolder + "\\" + xmlFileName.replace(".xml", "") + "!" + str(i) + ".xml")
+                        elif attachment.endswith(".gz"):
+                            fileIn = gopen(compFolder + "\\" + attachment, "rt")
+                            fileOut = open(xmlFolder + "\\" + xmlFileName, "w")
                             fileOut.write(fileIn.read())
                             fileIn.close()
                             fileOut.close()
+                            rename(xmlFolder + "\\" + xmlFileName, xmlFolder + "\\" + xmlFileName.replace(".xml", "") + "!" + str(i) + ".xml")
                         else:
-                            unpack_archive(workFolder + "\\" + domain + "\\Comp\\" + str(attachment), workFolder + "\\" + domain + "\\Xml\\")
+                            try:
+                                unpack_archive(compFolder + "\\" + attachment, workFolder + "\\" + domain + "\\Xml\\")
+                                rename(xmlFolder + "\\" + xmlFileName, xmlFolder + "\\" + xmlFileName.replace(".xml", "") + "!" + str(i) + ".xml")
+                            except ReadError:
+                                fileIn = gopen(compFolder + "\\" + attachment, "rt")
+                                fileOut = open(xmlFolder + "\\" + xmlFileName, "w")
+                                try:
+                                    fileOut.write(fileIn.read())
+                                    fileOut.close()
+                                    rename(xmlFolder + "\\" + xmlFileName, xmlFolder + "\\" + xmlFileName.replace(".xml", "") + "!" + str(i) + ".xml")
+                                except BadGzipFile:
+                                    print("                 \nWARNING! Unknown archive, unable to unpack archive!!\n")
+                                    fileOut.close()
+                                fileIn.close()
 
 
 class reportHandel:
@@ -243,6 +259,11 @@ class gui:
                 system("notepad \"" + workFolder + "\\" + file)
 
         def reloadData():
+            """Removes the workfolder and reruns the script.
+            
+            Args:
+                workFolder (str, Global): Path to the main work folder. 
+            """
             while path.exists(workFolder):
                 rmtree(workFolder)
             system("py \"" + __file__ + "\"")
@@ -388,6 +409,7 @@ class gui:
 
             Args:
                 activeDomains (list, Global): All active domains that hve reports.
+                workFolder (str, Global): Path to the main work folder. 
         """
         window = sg.Window("DMARC Analazer", gui.layout(), finalize=True)
 
@@ -398,6 +420,8 @@ class gui:
         while True:
             event = window.read()[0]
             if event == sg.WIN_CLOSED:
+                while path.exists(workFolder):
+                    rmtree(workFolder)
                 break
             if "::" in event:
                 event = event.split("::")[1]
@@ -436,7 +460,7 @@ if __name__ == "__main__":
     print("Loading data. . .", end="\r")
     workFolder = path.split(__file__)[0] + "\\DMARC"
     domains = ["mydomain.com", "mydomain.co.uk", "anotherdomain.eu"]
-    outlook.saveAttachments(outlook.getFolderMessages("DMARC\\Inbox"))
+    outlook.saveAttachments("DMARC\\Inbox")
     allReports = reportHandel.logData(reportHandel.formatReports(reportHandel.readXmlFiles()))
     summaryData, activeDomains = reportHandel.getSummary()
     print("                 ")
