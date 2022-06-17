@@ -1,4 +1,4 @@
-# DMARC reporter V1.3.0
+# DMARC reporter V1.3.1
 
 This scripts pulls dmarc reports out of an Outlook mailbox (Supports shared mailboxes) and generates an visual report of it.
 Reports are orgenized per domains and shows how many mails are successfull, failed on SPF or failed on DKIM.
@@ -35,6 +35,10 @@ Setting you domains and mailbox
 
 ## Updates
 
+### V1.3.1
+
+* Added a warning message for when the script can't connect to the Outlook client.
+
 ### V1.3.0
 
 * Reworked most of the code wich imports attachments from Outlook.
@@ -52,20 +56,20 @@ Setting you domains and mailbox
 * Added right click menu to Success, SPF Failed and DKIM Failed to open reports that contain the assosiated items.
 * Added show/ hide all reports button.
 
+### V1.1.2
+
+* Reports will now be sorted based on start date (newer on top).
+
+### V1.1.1
+
+* Tweaked GUI, now has an scrollbar for the reports with an fixed heigt.
+
 ### V1.1.0
 
 * Reworked half the code and main application should be more responsive.
 * Small tweaks to the GUI layout.
 * Added an reload function, this regenerates all the cached data.
 * Added functionality to easly disclose in wich Outlook folder the dmarc reports land in.
-
-#### V1.1.1
-
-* Tweaked GUI, now has an scrollbar for the reports with an fixed heigt.
-
-#### V1.1.2
-
-* Reports will now be sorted based on start date (newer on top).
 
 ### V1.0.0
 

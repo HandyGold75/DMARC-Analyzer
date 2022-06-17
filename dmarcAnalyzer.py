@@ -1,6 +1,6 @@
 from os import listdir, mkdir, path, rename, system
 from shutil import rmtree, unpack_archive, move, ReadError
-from win32com.client import Dispatch, CDispatch
+from win32com.client import Dispatch, CDispatch, pywintypes
 from xmltodict import parse as xmlParse
 from gzip import BadGzipFile, open as gopen
 from json import dumps, load
@@ -44,8 +44,11 @@ class outlook:
 
         outlook.perpFolderStructure()
 
-        outlookClient = Dispatch("Outlook.Application").GetNamespace("MAPI")
-
+        try:
+            outlookClient = Dispatch("Outlook.Application").GetNamespace("MAPI")
+        except pywintypes.com_error:
+            print("                 \nCan't connect to the Outlook client!\nMake sure the script and Outlook are not running with elevated privalages or try restarting Outlook!\n")
+            exit()
         folder = outlookClient
         for i in mailbox.split("\\"):
             folder = folder.Folders(i)
