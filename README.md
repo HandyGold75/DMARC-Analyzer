@@ -27,9 +27,9 @@ Install required modules
 Setting your domains and mailbox
 
 * Open the script in an editor.
-* At the bottom of the script replace the domains the scripts need to check (inside the function setup).
+* At the bottom of the script replace the domains the scripts need to check.
   * Line: `domains = ["mydomain.com", "mydomain.co.uk", "anotherdomain.eu"]`
-* At the bottom of the script, replace the name "DMARC\\\\Inbox" with the name of the mailbox and path to the folder that will receive DMARC reports (inside the function setup).
+* At the bottom of the script, replace the name "DMARC\\\\Inbox" with the name of the mailbox and path to the folder that will receive DMARC reports.
   * Line: `outlook.saveAttachments(outlook.getInboxMessages("DMARC\\Inbox"))`
 * Save the script and it's ready to run.
 
