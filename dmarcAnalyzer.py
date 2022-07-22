@@ -1,6 +1,6 @@
 from os import listdir, mkdir, path, rename, system
 from shutil import rmtree, unpack_archive, move, ReadError
-from win32com.client import Dispatch, CDispatch, pywintypes
+from win32com.client import Dispatch, pywintypes
 from xmltodict import parse as xmlParse
 from gzip import BadGzipFile, open as gopen
 from json import dumps, load
@@ -19,21 +19,26 @@ class outlook:
         """
         if not path.exists(workFolder):
             mkdir(workFolder)
+
         for domain in domains:
             if not path.exists(workFolder + "\\" + domain):
                 mkdir(workFolder + "\\" + domain)
+
             if not path.exists(workFolder + "\\" + domain + "\\Comp"):
                 mkdir(workFolder + "\\" + domain + "\\Comp")
+
             if not path.exists(workFolder + "\\" + domain + "\\Xml"):
                 mkdir(workFolder + "\\" + domain + "\\Xml")
+
             if not path.exists(workFolder + "\\" + domain + "\\Done"):
                 mkdir(workFolder + "\\" + domain + "\\Done")
+
             if not path.exists(workFolder + "\\" + domain + "\\" + domain + "-report.json"):
                 jsonFile = open(workFolder + "\\" + domain + "\\" + domain + "-report.json", "w")
                 jsonFile.write("{}")
                 jsonFile.close()
 
-    def saveAttachments(mailbox: CDispatch):
+    def saveAttachments(mailbox: str):
         """Save all attachements of x messages
 
         Args:
@@ -41,7 +46,6 @@ class outlook:
             workFolder (str, Global): Main outputfolder.
             domains (list, Global): Domains to check for in the subject and sort into subfolders.
         """
-
         outlook.perpFolderStructure()
 
         try:
@@ -49,49 +53,62 @@ class outlook:
         except pywintypes.com_error:
             print("                 \nCan't connect to the Outlook client!\nMake sure the script and Outlook are not running with elevated privalages or try restarting Outlook!\n")
             exit()
+
         folder = outlookClient
+
         for i in mailbox.split("\\"):
             folder = folder.Folders(i)
 
-        i = 0
         for message in folder.Items:
-            subject = message.Subject
-            attachments = message.Attachments
-            for attachment in attachments:
+            creationTime = str(message.CreationTime)[:19].replace(" ", "!").replace(":", "").replace("-", "")
+
+            for attachment in message.Attachments:
                 xmlFileName = str(attachment).replace(".xml", "").replace(".zip", ".xml").replace(".gztar", ".xml").replace(".bztar", ".xml").replace(".tar", ".xml").replace(".gz", ".xml")
-                i += 1
+
                 for domain in domains:
                     compFolder = workFolder + "\\" + domain + "\\Comp"
                     xmlFolder = workFolder + "\\" + domain + "\\Xml"
-                    if "report domain: " + domain in subject.lower() and not path.exists(workFolder + "\\" + domain + "\\Done\\" + xmlFileName.replace(".xml", "") + "!" + str(i) + ".xml"):
+
+                    if "report domain: " + domain in message.Subject.lower() and not path.exists(workFolder + "\\" + domain + "\\Done\\" + xmlFileName.replace(".xml", "") + "!" + str(creationTime) + ".xml"):
                         attachment.SaveAsFile(compFolder + "\\" + str(attachment))
                         attachment = str(attachment)
+
                         if attachment.endswith(".rar") or attachment.endswith(".7z"):
-                            print("                 \nWARNING! Rar or 7z file found, unpacking rar archives not yet supported!\n")
+                            print("                 \nWARNING! Rar or 7z file found, unpacking these archives are not yet supported!\n")
+
                         elif attachment.endswith(".zip") or attachment.endswith(".tar"):
                             unpack_archive(compFolder + "\\" + attachment, workFolder + "\\" + domain + "\\Xml\\")
-                            rename(xmlFolder + "\\" + xmlFileName, xmlFolder + "\\" + xmlFileName.replace(".xml", "") + "!" + str(i) + ".xml")
+                            rename(xmlFolder + "\\" + xmlFileName, xmlFolder + "\\" + xmlFileName.replace(".xml", "") + "!" + str(creationTime) + ".xml")
+
                         elif attachment.endswith(".gz"):
                             fileIn = gopen(compFolder + "\\" + attachment, "rt")
                             fileOut = open(xmlFolder + "\\" + xmlFileName, "w")
+
                             fileOut.write(fileIn.read())
+
                             fileIn.close()
                             fileOut.close()
-                            rename(xmlFolder + "\\" + xmlFileName, xmlFolder + "\\" + xmlFileName.replace(".xml", "") + "!" + str(i) + ".xml")
+
+                            rename(xmlFolder + "\\" + xmlFileName, xmlFolder + "\\" + xmlFileName.replace(".xml", "") + "!" + str(creationTime) + ".xml")
+
                         else:
                             try:
                                 unpack_archive(compFolder + "\\" + attachment, workFolder + "\\" + domain + "\\Xml\\")
-                                rename(xmlFolder + "\\" + xmlFileName, xmlFolder + "\\" + xmlFileName.replace(".xml", "") + "!" + str(i) + ".xml")
+                                rename(xmlFolder + "\\" + xmlFileName, xmlFolder + "\\" + xmlFileName.replace(".xml", "") + "!" + str(creationTime) + ".xml")
                             except ReadError:
                                 fileIn = gopen(compFolder + "\\" + attachment, "rt")
                                 fileOut = open(xmlFolder + "\\" + xmlFileName, "w")
+
                                 try:
                                     fileOut.write(fileIn.read())
                                     fileOut.close()
-                                    rename(xmlFolder + "\\" + xmlFileName, xmlFolder + "\\" + xmlFileName.replace(".xml", "") + "!" + str(i) + ".xml")
+
+                                    rename(xmlFolder + "\\" + xmlFileName, xmlFolder + "\\" + xmlFileName.replace(".xml", "") + "!" + str(creationTime) + ".xml")
                                 except BadGzipFile:
                                     print("                 \nWARNING! Unknown archive, unable to unpack archive!!\n")
+
                                     fileOut.close()
+
                                 fileIn.close()
 
 
@@ -108,17 +125,21 @@ class reportHandel:
             Dict: Dict of feedback items.
         """
         tasks = {}
+
         for domain in domains:
             xmlFiles = listdir(workFolder + "\\" + domain + "\\Xml")
+
             for file in xmlFiles:
                 tasks[file] = workFolder + "\\" + domain + "\\Xml\\" + file
 
         reports = []
+
         for task in tasks:
             currentFile = open(tasks[task], "r")
             currentFile_Dict = xmlParse(currentFile.read())
             currentFile_Dict["feedback"]["report_metadata"]["filename"] = task
             currentFile.close()
+
             reports.append(currentFile_Dict)
 
         return reports
@@ -133,13 +154,17 @@ class reportHandel:
             Dict: Dict of formated reports.
         """
         finalReports = {}
+
         for report in reports:
             metaData = report["feedback"]["report_metadata"]
             policy = report["feedback"]["policy_published"]
             records = report["feedback"]["record"]
+
             if type(records) is dict:
                 records = [records]
+
             currentRecords = []
+
             for record in records:
                 currentRecord = {
                     "source_ip": str(record["row"]["source_ip"]),
@@ -152,12 +177,15 @@ class reportHandel:
                     "dkim_domain": None,
                     "dkim_check": None
                 }
+
                 if "spf" in record["auth_results"]:
                     currentRecord["spf_domain"] = record["auth_results"]["spf"]["domain"]
                     currentRecord["spf_check"] = record["auth_results"]["spf"]["result"]
+
                 if "dkim" in record["auth_results"]:
                     currentRecord["dkim_domain"] = record["auth_results"]["dkim"]["domain"]
                     currentRecord["dkim_check"] = record["auth_results"]["dkim"]["result"]
+
                 currentRecords.append(currentRecord)
 
             finalReports[metaData["filename"]] = {
@@ -183,27 +211,33 @@ class reportHandel:
         Returns:
             Dict: Dict of reports including already logged items.
         """
-
         for report in reports:
             reportData = reports[report]
+
             mainLogFile = open(workFolder + "\\" + reportData["domain"] + "\\" + reportData["domain"] + "-report.json", "r")
             mainLog = load(mainLogFile)
             mainLogFile.close()
+
             mainLogFile = open(workFolder + "\\" + reportData["domain"] + "\\" + reportData["domain"] + "-report.json", "w")
+
             if not report in mainLog:
                 mainLog[report] = reportData
                 move(workFolder + "\\" + reportData["domain"] + "\\Xml\\" + report, workFolder + "\\" + reportData["domain"] + "\\Done")
+
             mainLogFile.write(str(dumps(mainLog, indent=4)))
             mainLogFile.close()
 
         mainLog = {}
+
         for domain in domains:
             mainLogFile = open(workFolder + "\\" + domain + "\\" + domain + "-report.json", "r")
             mainLogTmp = load(mainLogFile)
             mainLogFile.close()
+
             for report in mainLogTmp:
                 reportData = mainLogTmp[report]
                 mainLog[report] = reportData
+
         return mainLog
 
     def getSummary():
@@ -217,29 +251,39 @@ class reportHandel:
             List: List of domains that where found in the reports.
         """
         summaryData = {}
+
         for report in allReports:
             domain = allReports[report]["domain"]
+
             if not domain in summaryData:
                 summaryData[domain] = {"count": 0, "success": 0, "spf_failed": 0, "dkim_failed": 0, "reports": [], "success_files": [], "spf_files": [], "dkim_files": []}
+
             for recordData in allReports[report]["records"]:
                 summaryData[domain]["count"] += recordData["amount"]
+
                 if recordData["spf_check"] != "pass":
                     summaryData[domain]["spf_failed"] += recordData["amount"]
+
                     if not report in summaryData[domain]["spf_files"]:
                         summaryData[domain]["spf_files"].append(report)
+
                 elif recordData["dkim_check"] != "pass":
                     summaryData[domain]["dkim_failed"] += recordData["amount"]
+
                     if not report in summaryData[domain]["dkim_files"]:
                         summaryData[domain]["dkim_files"].append(report)
+
                 else:
                     summaryData[domain]["success"] += recordData["amount"]
                     summaryData[domain]["success_files"].append(report)
+
             summaryData[domain]["reports"].append({"file": report, "start": allReports[report]["date_start"], "end": allReports[report]["date_end"]})
 
         for i in summaryData:
             summaryData[i]["reports"].sort(key=lambda r: r["file"].split("!")[2], reverse=True)
 
         activeDomains = []
+
         for activeDomain in summaryData:
             activeDomains.append(activeDomain)
 
@@ -258,6 +302,7 @@ class gui:
             """
             if not folder is None:
                 Popen(r"explorer " + workFolder + "\\" + folder)
+
             elif not file is None:
                 system("notepad \"" + workFolder + "\\" + file)
 
@@ -269,6 +314,7 @@ class gui:
             """
             while path.exists(workFolder):
                 rmtree(workFolder)
+
             system("py \"" + __file__ + "\"")
             exit()
 
@@ -282,19 +328,24 @@ class gui:
                 list: List of Colums for the GUI.
             """
             returnList = []
+
             tempList = []
+
             for i, item in enumerate(list):
                 tempList.append([item])
+
                 if (i + 1) % 2 == 0:
                     returnList.append(sg.Column(tempList, expand_y=True, expand_x=True))
                     tempList = []
+
             if tempList != []:
                 returnList.append(sg.Column(tempList))
+
             return returnList
 
-    class getGui:
+    class get:
         def header():
-            return [sg.Text("--- Report ---", justification="center", expand_x=True)]
+            return [sg.Text("--- Report ---", justification="center", font=("Helvetica", 14), expand_x=True)]
 
         def reports():
             """Makes an summary out of all the reports.
@@ -305,18 +356,24 @@ class gui:
             Returns:
                 List: List of report frames for the GUI layout.
             """
-
             reportFrameList = []
+
             for domain in summaryData:
                 success_keys = []
+
                 for file in summaryData[domain]["success_files"]:
                     success_keys.append(file + "::OpenDir_" + domain + "\\Done\\" + file)
+
                 spf_keys = []
+
                 for file in summaryData[domain]["spf_files"]:
                     spf_keys.append(file + "::OpenDir_" + domain + "\\Done\\" + file)
+
                 dkim_keys = []
+
                 for file in summaryData[domain]["dkim_files"]:
                     dkim_keys.append(file + "::OpenDir_" + domain + "\\Done\\" + file)
+
                 summary = [
                     sg.Text("Count: " + str(summaryData[domain]["count"]), pad=(5, 10)),
                     sg.Push(),
@@ -334,10 +391,12 @@ class gui:
                 ]
 
                 reportsList = []
+
                 for report in summaryData[domain]["reports"]:
                     reportsList.append([sg.Text("Start: " + report["start"], pad=(0, 0)), sg.Push(), sg.Text("End: " + report["end"], pad=(0, 0))])
                     reportsList.append([sg.Text(report["file"], key="OpenDir_" + domain + "\\Done\\" + report["file"], enable_events=True, tooltip="Open this report in notepad.")])
                     reportsList.append([sg.Image(size=(0, 5), pad=(0, 0))])
+
                 reports = [
                     sg.Frame("Reports", [[sg.Column(reportsList, scrollable=True, vertical_scroll_only=True, expand_x=True, size=(None, 200), pad=(0, 0))]],
                              key="ShowHide_Item_" + domain,
@@ -393,6 +452,7 @@ class gui:
                         "Supported domains: \n\n" + str(domains).replace("[", "").replace("]", "").replace("'", "").replace(", ", "\n")
                         )
             #yapf: Enable
+
             return [sg.Text(helpMenu, visible=False, key="ShowHide_Item_Help"), sg.Image(size=(0, 0), pad=(0, 0))]
 
     def layout():
@@ -403,7 +463,7 @@ class gui:
         """
         sg.theme("DarkGrey13")
 
-        layout = [gui.getGui.header(), gui.getGui.reports(), gui.getGui.footer(), gui.getGui.helpmenu()]
+        layout = [gui.get.header(), gui.get.reports(), gui.get.footer(), gui.get.helpmenu()]
 
         return layout
 
@@ -416,42 +476,46 @@ class gui:
         """
         window = sg.Window("DMARC Analazer", gui.layout(), finalize=True)
 
-        showHideStates = {"Help": False, "All": False}
-        for domain in activeDomains:
-            showHideStates[domain] = False
-
         while True:
             event = window.read()[0]
+
             if event == sg.WIN_CLOSED:
-                while path.exists(workFolder):
-                    rmtree(workFolder)
                 break
+
             if "::" in event:
                 event = event.split("::")[1]
 
             if event.startswith("ShowHide_"):
                 button, text = event.split("_")[1:]
                 showHideStates[button] = not showHideStates[button]
+
                 if showHideStates[button]:
                     window["ShowHide_" + button + "_" + text].update(text="Hide " + text)
                 else:
                     window["ShowHide_" + button + "_" + text].update(text="Show " + text)
+
                 if button != "All":
                     window["ShowHide_Item_" + button].update(visible=showHideStates[button])
                 else:
                     for domain in activeDomains:
                         showHideStates[domain] = showHideStates["All"]
+
                         if showHideStates[domain]:
                             window["ShowHide_" + domain + "_reports"].update(text="Hide reports")
                         else:
                             window["ShowHide_" + domain + "_reports"].update(text="Show reports")
+
                         window["ShowHide_Item_" + domain].update(visible=showHideStates[domain])
+
             elif event.startswith("OpenFile_"):
                 gui.func.openDir(file=event.split("_")[1])
+
             elif event.startswith("OpenDir_"):
                 gui.func.openDir(event.split("_")[1])
+
             elif event.startswith("Action_"):
                 action = event.split("_")[1]
+
                 if action == "Reload":
                     window.close()
                     gui.func.reloadData()
@@ -460,11 +524,31 @@ class gui:
 
 
 if __name__ == "__main__":
-    print("Loading data. . .", end="\r")
+    sg.theme("DarkGrey13")
+
+    window_loading = sg.Window(
+        "DMARC Analazer",
+        [[sg.Text("DMARC Analyzer", justification="center", font=("Helvetica", 14), pad=(0, 10), expand_x=True, expand_y=True)], [sg.Text("Loading data. . .", justification="center", font=("Helvetica", 12), pad=(0, 10), expand_x=True, expand_y=True)]],
+        size=(200, 100),
+        no_titlebar=True,
+        keep_on_top=True,
+        finalize=True)
+
+    window_loading.refresh()
+
     workFolder = path.split(__file__)[0] + "\\DMARC"
+
     domains = ["mydomain.com", "mydomain.co.uk", "anotherdomain.eu"]
     outlook.saveAttachments("DMARC\\Inbox")
+
     allReports = reportHandel.logData(reportHandel.formatReports(reportHandel.readXmlFiles()))
     summaryData, activeDomains = reportHandel.getSummary()
-    print("                 ")
+
+    showHideStates = {"Help": False, "All": False}
+
+    for domain in activeDomains:
+        showHideStates[domain] = False
+
+    window_loading.close()
+
     gui.main()
