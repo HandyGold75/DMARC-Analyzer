@@ -1,4 +1,4 @@
-from os import listdir, mkdir, path, rename, system
+from os import listdir, mkdir, path, rename, system, remove
 from shutil import rmtree, unpack_archive, move, ReadError
 from win32com.client import Dispatch, pywintypes
 from xmltodict import parse as xmlParse
@@ -78,10 +78,10 @@ class outlook:
 
                         if attachment.endswith(".rar") or attachment.endswith(".7z"):
                             print("\nWARNING! Rar or 7z file found, unpacking these archives are not yet supported!\n")
+                            continue
 
                         elif attachment.endswith(".zip") or attachment.endswith(".tar"):
                             unpack_archive(compFolder + "\\" + attachment, workFolder + "\\" + domain + "\\Xml\\")
-                            rename(xmlFolder + "\\" + xmlFileName, xmlFolder + "\\" + xmlFileName.replace(".xml", "") + "!" + str(creationTime) + ".xml")
 
                         elif attachment.endswith(".gz"):
                             fileIn = gopen(compFolder + "\\" + attachment, "rt")
@@ -92,26 +92,30 @@ class outlook:
                             fileIn.close()
                             fileOut.close()
 
-                            rename(xmlFolder + "\\" + xmlFileName, xmlFolder + "\\" + xmlFileName.replace(".xml", "") + "!" + str(creationTime) + ".xml")
-
                         else:
                             try:
                                 unpack_archive(compFolder + "\\" + attachment, workFolder + "\\" + domain + "\\Xml\\")
-                                rename(xmlFolder + "\\" + xmlFileName, xmlFolder + "\\" + xmlFileName.replace(".xml", "") + "!" + str(creationTime) + ".xml")
+
                             except ReadError:
                                 fileIn = gopen(compFolder + "\\" + attachment, "rt")
                                 fileOut = open(xmlFolder + "\\" + xmlFileName, "w")
 
                                 try:
                                     fileOut.write(fileIn.read())
-                                    fileOut.close()
 
-                                    rename(xmlFolder + "\\" + xmlFileName, xmlFolder + "\\" + xmlFileName.replace(".xml", "") + "!" + str(creationTime) + ".xml")
                                 except BadGzipFile:
                                     print("\nWARNING! Unknown archive, unable to unpack archive!!\nFile: " + compFolder + "\\" + attachment)
+
+                                    fileIn.close()
                                     fileOut.close()
 
+                                    continue
+
                                 fileIn.close()
+                                fileOut.close()
+
+                        rename(xmlFolder + "\\" + xmlFileName, xmlFolder + "\\" + xmlFileName.replace(".xml", "") + "!" + str(creationTime) + ".xml")
+                        remove(compFolder + "\\" + str(attachment))
 
 
 class reportHandel:
