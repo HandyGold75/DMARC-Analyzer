@@ -60,7 +60,19 @@ class outlook:
         loadingCount = 0
 
         for message in folder.Items:
-            creationTime = str(message.CreationTime)[:19].replace(" ", "!").replace(":", "").replace("-", "")
+            subjectSplited = str(message.Subject).replace(":", "").split(" ")
+            subjectIncludeReportID = False
+
+            for i, item in enumerate(subjectSplited):
+                if item == "Report-ID":
+                    nameAppend = subjectSplited[i + 1].replace("<", "").replace(">", "")
+                    subjectIncludeReportID = True
+                elif "Report-ID" in item:
+                    nameAppend = subjectSplited[i].replace("Report-ID", "").replace("<", "").replace(">", "")
+                    subjectIncludeReportID = True
+
+            if not subjectIncludeReportID:
+                nameAppend = str(message.CreationTime)[:19].replace(" ", "!").replace(":", "").replace("-", "")
 
             for attachment in message.Attachments:
                 xmlFileName = str(attachment).replace(".xml", "").replace(".zip", ".xml").replace(".gztar", ".xml").replace(".bztar", ".xml").replace(".tar", ".xml").replace(".gz", ".xml")
@@ -69,7 +81,7 @@ class outlook:
                     compFolder = workFolder + "\\" + domain + "\\Comp"
                     xmlFolder = workFolder + "\\" + domain + "\\Xml"
 
-                    if "report domain: " in message.Subject.lower() and domain.lower() in message.Subject.lower() and not path.exists(workFolder + "\\" + domain + "\\Done\\" + xmlFileName.replace(".xml", "") + "!" + str(creationTime) + ".xml"):
+                    if "report domain: " in message.Subject.lower() and domain.lower() in message.Subject.lower() and not path.exists(workFolder + "\\" + domain + "\\Done\\" + xmlFileName.replace(".xml", "") + "!" + str(nameAppend) + ".xml"):
                         attachment.SaveAsFile(compFolder + "\\" + str(attachment))
                         attachment = str(attachment)
 
@@ -114,7 +126,7 @@ class outlook:
                                 fileIn.close()
                                 fileOut.close()
 
-                        rename(xmlFolder + "\\" + xmlFileName, xmlFolder + "\\" + xmlFileName.replace(".xml", "") + "!" + str(creationTime) + ".xml")
+                        rename(xmlFolder + "\\" + xmlFileName, xmlFolder + "\\" + xmlFileName.replace(".xml", "") + "!" + str(nameAppend) + ".xml")
                         remove(compFolder + "\\" + str(attachment))
 
 
@@ -399,11 +411,11 @@ class gui_main:
             summary = [
                 sg.Text("Count: " + str(summaryData[domain]["count"]), pad=(5, 10)),
                 sg.Push(),
-                sg.Text("Success: " + str(summaryData[domain]["success"]), right_click_menu=["", success_keys], pad=(5, 10)),
+                sg.Text("Success: " + str(summaryData[domain]["success"]) + " (" + str(round((summaryData[domain]["success"] * 100) / summaryData[domain]["count"], 2)) + "%)", right_click_menu=["", success_keys], pad=(5, 10)),
                 sg.Push(),
-                sg.Text("SPF Failed: " + str(summaryData[domain]["spf_failed"]), right_click_menu=["", spf_keys], pad=(5, 10)),
+                sg.Text("SPF Failed: " + str(summaryData[domain]["spf_failed"]) + " (" + str(round((summaryData[domain]["spf_failed"] * 100) / summaryData[domain]["count"], 2)) + "%)", right_click_menu=["", spf_keys], pad=(5, 10)),
                 sg.Push(),
-                sg.Text("DKIM Failed: " + str(summaryData[domain]["dkim_failed"]), right_click_menu=["", dkim_keys], pad=(5, 10))
+                sg.Text("DKIM Failed: " + str(summaryData[domain]["dkim_failed"]) + " (" + str(round((summaryData[domain]["dkim_failed"] * 100) / summaryData[domain]["count"], 2)) + "%)", right_click_menu=["", dkim_keys], pad=(5, 10))
             ]
 
             buttons = [
