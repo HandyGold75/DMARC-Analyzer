@@ -1,4 +1,4 @@
-# DMARC reporter V1.5.2
+# DMARC reporter V1.6.0
 
 This script pulls DMARC reports out of an Outlook mailbox (Which supports shared mailboxes) and generates a visual report of it.
 Reports are organized per domain and show how many emails are successful, failed on SPF, or failed on DKIM.
@@ -13,12 +13,10 @@ _Note: I'm not a developer by profession and the code is far from best practice,
 
 * Python 3.10 or greater (Older version not tested).
 * Python Modules pywin32, xmltodict, and PySimpleGUI.
-* Windows 10/ 11.
 * Outlook Client.
 * (Shared) mailbox folder that receives DMARC reports.
-* Microsoft Notepad (Not required to run).
 
-## Set up
+## Getting started
 
 Install required modules
 
@@ -26,26 +24,69 @@ Install required modules
 
 Setting your domains and mailbox
 
-* Open the script in an editor.
-* At the bottom of the script replace the domains the scripts need to check.
-  * Line: `domains = ["mydomain.com", "mydomain.co.uk", "anotherdomain.eu"]`
-* At the bottom of the script, replace the name "DMARC\\\\Inbox" with the name of the mailbox and path to the folder that will receive DMARC reports.
-  * Line: `outlook.saveAttachments(outlook.getInboxMessages("DMARC\\Inbox"))`
-* Save the script and it's ready to run.
+* These are the default settings:
+  * Domains: mydomain.com, mydomain.co.uk, anotherdomain.eu
+    * Specify which domains to look for in the DMARC reports.
+    * Change with the -d or -domain argument.
+    * For eq: `py dmarcAnalyzer.py -d mydomain.com,mydomain.co.uk,anotherdomain.eu`
+  * Mailbox: DMARC\\\\Inbox
+    * Specify in which mailbox and (sub)folders to look for DMARC reports.
+    * Change with the -m or -mailbox argument.
+    * For eq: `py dmarcAnalyzer.py -m DMARC\\Inbox`
+  * Age: 0
+    * Specify how old in days the reports may be, based on the date the email was received (already cached reports are not removed).
+    * 0 or lower will disable this filter.
+    * Change with the -a or -age argument.
+    * For eq: `py dmarcAnalyzer.py -a 0`
+  * Unread: False
+    * If the argument is present only reports of unread emails will be allowed.
+    * Apply this filter with -ur or -unread argument.
+    * For eq: `py dmarcAnalyzer.py -ur`
+  * Remove: False
+    * If the argument is present this will remove all cached reports on startup.
+    * Do this action with the -r or -remove argument.
+    * For eq: `py dmarcAnalyzer.py -r`
+* The default settings can be changed by modifying this code block present at the top of the script:
+
+  ```python
+  parser.add_argument("-d", "-domains", default="mydomain.com,mydomain.co.uk,anotherdomain.eu", type=str, help="Specify domains to be checked, split with \',\'")
+  parser.add_argument("-m", "-mailbox", default="DMARC\\Inbox", type=str, help="Specify mailbox where DMARC reports land in, folders can be specified with '\\'")
+  parser.add_argument("-a", "-age", default=0, type=int, help="Specify how old in days reports may be, based on email receive date (already cashed reports are not removed)")
+  parser.add_argument("-ur", "-unread", action="store_true", help="Only cache unread mails.")
+  parser.add_argument("-r", "-remove", action="store_true", help="Remove already cached files")
+  ```
+
+  * To modify the default settings for domains, mailbox, and age you can change the value after `default=`
+  * To modify the default settings for unread and remove you can change the value of `action=` to `store_false` (default is `store_true`)
 
 ## Updates
 
+### V1.6.0
+
+* Stopped using system calls, now when opening reports the system's default text editor will be used.
+* Made the naming of saved attachments more robust in cases illegal characters are used for filenames.
+* Refactor most code to make everything more readable, now uses classes better instead of declaring too many globals.
+* Improved checks that happen when interacting with the GUI (And more readable code).
+* Removed docstrings as they didn't add much value.
+* Removed the reload option as this doesn't handle arguments well.
+* Added error message in case the script is unable to open the specified Outlook folder.
+* Added support for reports that list multiple SPF and DKIM checks under the same record.
+* Added support for startup arguments.
+* Added support for age filtering.
+* Added support for unread filtering.
+* Added support for removing cached files on startup.
+
 ### V1.5.2
 
-* Added percentages of success, spf failed and dkim failed.
-* Reworked the way attachments are imported and the naming of saved attachment.
-* Now try's to append the report ID included in the subject instead of the creation date and time.
-* This prevents mails created at the same time with the same details from raising an error.
-* The date and time will only be appended if the report ID coudnt be resolved as fallback.
+* Added percentages of success, SPF failed and DKIM failed.
+* Reworked the way attachments are imported and the naming of saved attachments.
+* Now tries to append the report ID included in the subject instead of the creation date and time.
+* This prevents emails created at the same time with the same details from raising an error.
+* The date and time will only be appended if the report ID couldn't be resolved as a fallback.
 
 ### V1.5.1
 
-* Optimized the way items are firstly cached a litle bit more.
+* Optimized the way items are firstly cached a little bit more.
 
 ### V1.5.0
 
@@ -54,7 +95,7 @@ Setting your domains and mailbox
 * Optimized most of the code to make launching with a filled cache a bit faster.
 * Reworked the loading splash screen and it now shows the progress of caching items.
 * Now the show reports option only shows the 100 most recent reports as to many reports could slow down the window.
-* Note that this doesn't effect the per domain summary.
+* Note that this doesn't affect the per-domain summary.
 * Up to 3 domains should always run without issue, up to 6 domains with small slowdowns, and up to 8 domains while workable.
 * This only applies after all reports have been shown (Hiding them doesn't help).
 * Fixing this would take too much processing for every hide/ show action.
@@ -81,7 +122,7 @@ Setting your domains and mailbox
 * Now supports the listing of reports which have the same name.
 * This is done by appending an index number at the end of the XML file names.
 * Note that if duplicate emails with the same reports are present that both reports will be counted.
-* Now removes cached data on exit as the implementation can list the same report 2 times if the order of mails changes.
+* Now removes cached data on exit as the implementation can list the same report 2 times if the order of emails changes.
 
 ### V1.2.0
 
