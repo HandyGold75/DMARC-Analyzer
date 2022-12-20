@@ -107,7 +107,13 @@ class setup:
                     xmlFolder = setup.workFolder + "\\" + domain + "\\Xml"
 
                     if "report domain: " in message.Subject.lower() and domain.lower() in message.Subject.lower() and not path.exists(setup.workFolder + "\\" + domain + "\\Done\\" + xmlFileName.replace(".xml", "") + "!" + str(nameAppend) + ".xml"):
-                        attachment.SaveAsFile(compFolder + "\\" + str(attachment))
+                        try:
+                            attachment.SaveAsFile(compFolder + "\\" + str(attachment))
+
+                        except pywintypes.com_error:
+                            print("Can't save attachment in email \"" + str(attachment) + "\" (skipping)!")
+                            continue
+
                         attachment = str(attachment)
 
                         setup.loaded += 1
