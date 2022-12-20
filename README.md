@@ -1,4 +1,4 @@
-# DMARC reporter V1.6.0
+# DMARC reporter V1.6.1
 
 This script pulls DMARC reports out of an Outlook mailbox (Which supports shared mailboxes) and generates a visual report of it.
 Reports are organized per domain and show how many emails are successful, failed on SPF, or failed on DKIM.
