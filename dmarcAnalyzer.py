@@ -61,6 +61,9 @@ class setup:
                 jsonFile.close()
 
     def saveAttachments():
+        def sanitize(obj: str):
+            return obj.replace("<", "").replace(">", "").replace("=", "").replace(" ", "").replace("	", "")
+
         try:
             folder = Dispatch("Outlook.Application").GetNamespace("MAPI")
         except pywintypes.com_error:
@@ -90,14 +93,17 @@ class setup:
 
             for i, item in enumerate(subjectSplited):
                 if item == "Report-ID":
-                    nameAppend = subjectSplited[i + 1].replace("<", "").replace(">", "").replace("=", "")
+                    nameAppend = sanitize(subjectSplited[i + 1])
                     subjectIncludeReportID = True
+                    break
+
                 elif "Report-ID" in item:
-                    nameAppend = subjectSplited[i].replace("Report-ID", "").replace("<", "").replace(">", "")
+                    nameAppend = sanitize(subjectSplited[i].replace("Report-ID", ""))
                     subjectIncludeReportID = True
+                    break
 
             if not subjectIncludeReportID:
-                nameAppend = str(message.CreationTime)[:19].replace(" ", "!").replace(":", "").replace("-", "")
+                nameAppend = sanitize(str(message.CreationTime)[:19].replace(" ", "!").replace(":", "").replace("-", ""))
 
             for attachment in message.Attachments:
                 xmlFileName = str(attachment).replace(".xml", "").replace(".zip", ".xml").replace(".gztar", ".xml").replace(".bztar", ".xml").replace(".tar", ".xml").replace(".gz", ".xml")
