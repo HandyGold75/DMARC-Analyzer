@@ -1,4 +1,4 @@
-# DMARC reporter V0.7.2
+# DMARC reporter V0.7.3
 
 This script pulls DMARC reports out of an Outlook mailbox (Which supports shared mailboxes) and generates a visual report of it.
 Reports are organized per domain and show how many emails are successful, failed on SPF, or failed on DKIM.
@@ -42,18 +42,18 @@ Setting your domains and mailbox
     * If the argument is present only reports of unread emails will be allowed.
     * Apply this filter with -ur or -unread argument.
     * For eq: `py dmarcAnalyzer.py -ur`
-  * Remove: False
-    * If the argument is present this will remove all cached reports on startup.
-    * Do this action with the -r or -remove argument.
-    * For eq: `py dmarcAnalyzer.py -r`
+  * Cache: False
+    * If the argument is present this will allow the use of cached reports on startup.
+    * Do this action with the -c or -cache argument.
+    * For eq: `py dmarcAnalyzer.py -c`
 * The default settings can be changed by modifying this code block present at the top of the script:
 
   ```python
-  parser.add_argument("-d", "-domains", default="mydomain.com,mydomain.co.uk,anotherdomain.eu", type=str, help="Specify domains to be checked, split with \',\'")
-  parser.add_argument("-m", "-mailbox", default="DMARC\\Inbox", type=str, help="Specify mailbox where DMARC reports land in, folders can be specified with '\\'")
-  parser.add_argument("-a", "-age", default=0, type=int, help="Specify how old in days reports may be, based on email receive date (already cashed reports are not removed)")
+  parser.add_argument("-d", "-domains", default="mydomain.com,mydomain.co.uk,anotherdomain.eu", type=str, help="Specify domains to be checked, split with \',\', eq: mydomain.com,mydomain.co.uk,anotherdomain.eu")
+  parser.add_argument("-m", "-mailbox", default="DMARC\\Inbox", type=str, help="Specify mailbox where dmarc reports land in, folders can be specified with '\\', eq: DMARC\\Inbox")
+  parser.add_argument("-a", "-age", default=31, type=int, help="Specify how old in days reports may be, based on email receive date (31 is default; 0 to disable age filtering).")
   parser.add_argument("-ur", "-unread", action="store_true", help="Only cache unread mails.")
-  parser.add_argument("-r", "-remove", action="store_true", help="Remove already cached files")
+  parser.add_argument("-c", "-cache", action="store_false", help="Use already cached files, note that if cached reports are outside the -age scope there still counted.")
   ```
 
   * To modify the default settings for domains, mailbox, and age you can change the value after `default=`
