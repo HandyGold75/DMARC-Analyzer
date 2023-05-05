@@ -1,4 +1,4 @@
-# DMARC reporter V0.7.3
+# DMARC reporter V0.7.4
 
 This script pulls DMARC reports out of an Outlook mailbox (Which supports shared mailboxes) and generates a visual report of it.
 Reports are organized per domain and show how many emails are successful, failed on SPF, or failed on DKIM.
@@ -58,3 +58,16 @@ Setting your domains and mailbox
 
   * To modify the default settings for domains, mailbox, and age you can change the value after `default=`
   * To modify the default settings for unread and remove you can change the value of `action=` to `store_false` (default is `store_true`)
+
+## Making source executable
+
+Install required modules
+
+`py -m pip install pyinstaller`
+
+Making executable
+
+1. Modify default settings in source (Refer to "[Getting started](#getting-started)")
+2. Run pyInstaller: `pyinstaller -F -w .\dmarcAnalyzer.py`
+
+_Note: Startup arguments are not supported in executable format!_

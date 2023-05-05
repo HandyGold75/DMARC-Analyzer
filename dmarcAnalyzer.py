@@ -118,7 +118,7 @@ class setup:
                     gui_splash.update(f'Saving attachments: {setup.loaded}\nSkipped: {setup.skipped}')
 
                     if attachment.endswith(".rar") or attachment.endswith(".7z"):
-                        print(f'\nWARNING! Rar or 7z file found, unpacking these archives is not yet supported!\n')
+                        print(f'Rar or 7z file found, unpacking these archives is not yet supported!')
                         continue
 
                     elif attachment.endswith(".zip") or attachment.endswith(".tar"):
@@ -138,7 +138,7 @@ class setup:
                                     try:
                                         fileOut.write(fileIn.read())
                                     except BadGzipFile:
-                                        print(f'\nWARNING! Unknown archive, unable to unpack archive!!\nFile: {compFolder}\\{attachment}')
+                                        print(f'Unknown archive, unable to unpack archive! File: {compFolder}\\{attachment}')
                                         continue
 
                     try:
@@ -167,7 +167,11 @@ class reportHandel:
 
             for file in xmlFiles:
                 with open(f'{setup.workFolder}\\{domain}\\Xml\\{file}', "r") as currentFile:
-                    currentFile_Dict = xmlParse(currentFile.read())
+                    try:
+                        currentFile_Dict = xmlParse(currentFile.read())
+                    except Exception:
+                        print(f'Unable to read file! File: {setup.workFolder}\\{domain}\\Xml\\{file}')
+                        continue
                     currentFile_Dict["feedback"]["report_metadata"]["filename"] = file
 
                 reports.append(currentFile_Dict)
