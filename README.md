@@ -68,6 +68,7 @@ Install required modules
 Making executable
 
 1. Modify default settings in source (Refer to "[Getting started](#getting-started)")
-2. Run pyInstaller: `pyinstaller -F -w .\dmarcAnalyzer.py`
+2. Run pyInstaller: `pyinstaller -F -w --clean --distpath ./ .\dmarcAnalyzer.py`
+3. Clean up temporary files: `Remove-Item -Path ".\build\" -Recurse -Force ; Remove-Item -Path ".\dmarcAnalyzer.spec" -Force`
 
 _Note: Startup arguments are not supported in executable format!_
