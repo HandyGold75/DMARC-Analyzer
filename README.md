@@ -84,3 +84,10 @@ Making executable (Windows):
 3. Clean up temporary files: `Remove-Item -Path ".\build\" -Recurse -Force ; Remove-Item -Path ".\dmarcAnalyzer.spec" -Force`
 
 _Note: Startup arguments are not supported in executable format!_
+
+## Limitations
+
+* On Windows only Outlook can be used as mailclient.
+* On Linux only Thunderbird can be used as mailclient.
+* The Outlook client won't deal succesfully with .msg email attachments, will give an warning in the CLI.
+* The Thunderbird client can't deal with all email from enterprise.protection.outlook.com, will not give an warning (An fix will likely be implemented sometime).
