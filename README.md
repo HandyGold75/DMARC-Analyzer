@@ -1,4 +1,4 @@
-# DMARC reporter V0.7.4
+# DMARC reporter V0.8.0
 
 This script pulls DMARC reports out of an Outlook mailbox (Which supports shared mailboxes) and generates a visual report of it.
 Reports are organized per domain and show how many emails are successful, failed on SPF, or failed on DKIM.
@@ -12,9 +12,10 @@ _Note: I'm not a developer by profession and the code is far from best practice,
 ## Requirements
 
 * Python 3.10 or greater (Older version not tested).
-* Python Modules pywin32, xmltodict, and PySimpleGUI.
-* Outlook Client.
-* (Shared) mailbox folder that receives DMARC reports.
+* Python Modules xmltodict, PySimpleGUI and pywin32 (Windows only).
+* Outlook Client (Windows only).
+* Thunderbird Client (Linux only).
+* Mailbox folder that contains DMARC reports.
 
 ## Getting started
 
@@ -46,14 +47,19 @@ Setting your domains and mailbox
     * If the argument is present this will allow the use of cached reports on startup.
     * Do this action with the -c or -cache argument.
     * For eq: `py dmarcAnalyzer.py -c`
-* The default settings can be changed by modifying this code block present at the top of the script:
+  * Visable Reports: 0
+    * Specify how many reports may show up in the GUI per domain (To many will cause the GUI to lag).
+    * Change with the -vr or -visablereports argument.
+    * For eq: `py dmarcAnalyzer.py -vr 100`
+* The default settings can be changed by modifying this code block present at the bottom of the script:
 
   ```python
-  parser.add_argument("-d", "-domains", default="mydomain.com,mydomain.co.uk,anotherdomain.eu", type=str, help="Specify domains to be checked, split with \',\', eq: mydomain.com,mydomain.co.uk,anotherdomain.eu")
-  parser.add_argument("-m", "-mailbox", default="DMARC\\Inbox", type=str, help="Specify mailbox where dmarc reports land in, folders can be specified with '\\', eq: DMARC\\Inbox")
-  parser.add_argument("-a", "-age", default=31, type=int, help="Specify how old in days reports may be, based on email receive date (31 is default; 0 to disable age filtering).")
-  parser.add_argument("-ur", "-unread", action="store_true", help="Only cache unread mails.")
-  parser.add_argument("-c", "-cache", action="store_false", help="Use already cached files, note that if cached reports are outside the -age scope there still counted.")
+    parser.add_argument("-d", "-domains", default="mydomain.com,mydomain.co.uk,anotherdomain.eu", type=str, help="Specify domains to be checked, split with ','.")
+    parser.add_argument("-m", "-mailbox", default="DMARC/Inbox", type=str, help="Specify mailbox where dmarc reports land in, folders can be specified with '/'.")
+    parser.add_argument("-a", "-age", default=31, type=int, help="Specify how old in days reports may be, based on email receive date (31 is default; 0 to disable age filtering).")
+    parser.add_argument("-ur", "-unread", action="store_true", help="Only cache unread mails (Windows only).")
+    parser.add_argument("-c", "-cache", action="store_true", help="Use already cached files, note that if cached reports are outside any applied filters there still counted.")
+    parser.add_argument("-vr", "-visablereports", default=100, type=int, help="Specify how many reports may show up in the GUI per domain (To many will cause the GUI to lag).")
   ```
 
   * To modify the default settings for domains, mailbox, and age you can change the value after `default=`
@@ -61,14 +67,20 @@ Setting your domains and mailbox
 
 ## Making source executable
 
-Install required modules
+Install required modules:
 
 `py -m pip install pyinstaller`
 
-Making executable
+Making executable (Linux):
 
 1. Modify default settings in source (Refer to "[Getting started](#getting-started)")
-2. Run pyInstaller: `pyinstaller -F -w --clean --distpath ./ .\dmarcAnalyzer.py`
+2. Run pyInstaller: `pyinstaller -F -w --clean --distpath ./ ./dmarcAnalyzer.py`
+3. Clean up temporary files: `rm -r -f ./build/ && rm -f ./dmarcAnalyzer.spec`
+
+Making executable (Windows):
+
+1. Modify default settings in source (Refer to "[Getting started](#getting-started)")
+2. Run pyInstaller: `pyinstaller -F -w --clean --distpath .\ .\dmarcAnalyzer.py`
 3. Clean up temporary files: `Remove-Item -Path ".\build\" -Recurse -Force ; Remove-Item -Path ".\dmarcAnalyzer.spec" -Force`
 
 _Note: Startup arguments are not supported in executable format!_
